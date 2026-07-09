@@ -1,4 +1,20 @@
-# LeitoSync: Sistema Distribuído para Gerenciamento de Leitos e Recursos Hospitalares Críticos
+---
+geometry: "top=3cm, left=3cm, bottom=2cm, right=2cm"
+fontsize: 12pt
+linestretch: 1.5
+header-includes:
+  - \usepackage{indentfirst}
+  - \setlength{\parindent}{1.25cm}
+---
+
+# Relatório Prático: O Problema dos Leitores e Escritores
+**Solução:** LeitoSync
+
+**Disciplina:** Sistemas Distribuídos  
+**Alunos:** Gabriel Viana da Costa; Marlon André Pereira Almeida; Pedro Victor Soares da Silva Araújo e Randerson Sousa de Sá Nunes  
+**Professor(a):** Francois Fernandes Ribeiro Barbosa  
+
+---
 
 ## 1. Introdução
 
