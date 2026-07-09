@@ -16,7 +16,7 @@ async def simulate_reader(resource_id: int) -> dict:
     async with async_session_maker() as session:
         try:
             resource = await ResourceRepository.get_by_id(session, resource_id)
-            return {"success": True, "message": f"Read successful. Status: {resource.status.value}", "type": "read"}
+            return {"success": True, "message": f"Leitura com sucesso. Status: {resource.status.value}", "type": "read"}
         except Exception as e:
             return {"success": False, "message": str(e), "type": "read"}
 
@@ -24,9 +24,9 @@ async def simulate_writer(resource_id: int, writer_id: int) -> dict:
     async with async_session_maker() as session:
         try:
             req = ReservationCreate(
-                requester_name=f"Simulated Writer {writer_id}",
+                requester_name=f"Escritor Simulado {writer_id}",
                 priority=ReservationPriority.MEDIUM,
-                reason="Simulation"
+                reason="Simulação"
             )
             resource = await ResourceRepository.reserve(session, resource_id, req)
             await session.commit()
@@ -36,12 +36,12 @@ async def simulate_writer(resource_id: int, writer_id: int) -> dict:
                 resource_id=resource_id,
                 operation_type="WRITE",
                 success=True,
-                message="Reservation successful."
+                message="Reserva confirmada com sucesso."
             )
             session.add(event)
             await session.commit()
             
-            return {"success": True, "message": "Reservation successful", "type": "write"}
+            return {"success": True, "message": "Reserva confirmada com sucesso", "type": "write"}
         except ConcurrencyConflictException as e:
             await session.rollback()
             event = ConcurrencyEvent(
@@ -79,7 +79,7 @@ async def run_writers(resource_id: int, count: int = 5):
             from app.core.enums import ResourceStatus
             await ResourceRepository.change_status(
                 session, resource_id, ResourceStatus.AVAILABLE, 
-                ActionRequest(actor_name="System", reason="Simulation Reset")
+                ActionRequest(actor_name="Sistema", reason="Reset da Simulação")
             )
             await session.commit()
         except Exception:
@@ -106,7 +106,7 @@ async def run_readers_writers(resource_id: int, readers_count: int = 10, writers
             from app.core.enums import ResourceStatus
             await ResourceRepository.change_status(
                 session, resource_id, ResourceStatus.AVAILABLE, 
-                ActionRequest(actor_name="System", reason="Simulation Reset")
+                ActionRequest(actor_name="Sistema", reason="Reset da Simulação")
             )
             await session.commit()
         except Exception:

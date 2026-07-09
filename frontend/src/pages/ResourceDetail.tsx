@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { STATUS_MAP, ACTION_MAP } from '../utils/translations';
 
 const statusColors: Record<string, string> = {
   available: 'bg-green-100 text-green-800',
@@ -26,7 +27,7 @@ const ResourceDetail = () => {
       setResource(data);
     } catch (e) {
       console.error(e);
-      setError('Failed to fetch resource.');
+      setError('Falha ao carregar recurso.');
     }
   };
 
@@ -49,29 +50,29 @@ const ResourceDetail = () => {
     try {
       if (action === 'reserve') {
         await api.post(`/resources/${id}/reserve`, {
-          requester_name: 'Operator User',
+          requester_name: 'Operador',
           priority: 'medium',
-          reason: 'Manual reservation'
+          reason: 'Reserva manual'
         });
       } else {
         await api.post(`/resources/${id}/${action}`, {
-          actor_name: 'Operator User',
-          reason: `Manual ${action}`
+          actor_name: 'Operador',
+          reason: `Ação manual: ${action}`
         });
       }
-      setActionSuccess(`Successfully performed ${action}`);
+      setActionSuccess(`${ACTION_MAP[action] || action} realizado com sucesso`);
       fetchResource();
     } catch (e: any) {
-      setError(e.response?.data?.detail || `Failed to ${action}`);
+      setError(e.response?.data?.detail || `Falha ao executar ${action}`);
     }
   };
 
-  if (!resource) return <div className="p-4">Loading...</div>;
+  if (!resource) return <div className="p-4">Carregando...</div>;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <button onClick={() => navigate(-1)} className="text-blue-600 hover:underline mb-4 inline-block">
-        &larr; Back to Resources
+        &larr; Voltar para Recursos
       </button>
 
       {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>}
@@ -82,62 +83,62 @@ const ResourceDetail = () => {
           <div>
             <h2 className="text-2xl font-bold text-gray-900">{resource.code}</h2>
             <p className="text-sm text-gray-500 mt-1">
-              Hospital: {resource.hospital?.name} | Type: {resource.resource_type?.name}
+              Hospital: {resource.hospital?.name} | Tipo: {resource.resource_type?.name}
             </p>
           </div>
           <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[resource.status] || 'bg-gray-100'}`}>
-            {resource.status.toUpperCase()}
+            {STATUS_MAP[resource.status] || resource.status.toUpperCase()}
           </span>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="bg-gray-50 p-4 rounded-lg">
-            <span className="text-sm text-gray-500">Current Version</span>
+            <span className="text-sm text-gray-500">Versão Atual</span>
             <p className="text-lg font-semibold text-gray-900">v{resource.version}</p>
           </div>
           <div className="bg-gray-50 p-4 rounded-lg">
-            <span className="text-sm text-gray-500">Last Updated</span>
-            <p className="text-lg font-semibold text-gray-900">{new Date(resource.updated_at).toLocaleString()}</p>
+            <span className="text-sm text-gray-500">Última Atualização</span>
+            <p className="text-lg font-semibold text-gray-900">{new Date(resource.updated_at).toLocaleString('pt-BR')}</p>
           </div>
         </div>
 
         <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Actions</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">Ações</h3>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={() => handleAction('reserve')}
               disabled={resource.status !== 'available'}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Reserve
+              Reservar
             </button>
             <button
               onClick={() => handleAction('occupy')}
               disabled={!['available', 'reserved'].includes(resource.status)}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Occupy
+              Ocupar
             </button>
             <button
               onClick={() => handleAction('release')}
               disabled={resource.status === 'available'}
               className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Release
+              Liberar
             </button>
             <button
               onClick={() => handleAction('block')}
               disabled={['blocked', 'maintenance', 'occupied'].includes(resource.status)}
               className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Block
+              Bloquear
             </button>
             <button
               onClick={() => handleAction('maintenance')}
               disabled={['maintenance', 'occupied'].includes(resource.status)}
               className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              Maintenance
+              Manutenção
             </button>
           </div>
         </div>

@@ -71,7 +71,7 @@ async def test_reserve_already_reserved_resource(setup_db):
             "priority": "high"
         })
     assert response.status_code == 409
-    assert "Resource is no longer available" in response.json()["detail"]
+    assert "O recurso não está mais disponível" in response.json()["detail"]
 
 @pytest.mark.asyncio
 async def test_concurrent_reservations(setup_db):

@@ -20,10 +20,10 @@ async def seed_data():
 
         # Users
         users = [
-            User(name="Admin", email="admin@leitossync.com", role=UserRole.ADMIN),
-            User(name="Regulator", email="reg@leitossync.com", role=UserRole.REGULATOR),
-            User(name="Operator", email="op@leitossync.com", role=UserRole.HOSPITAL_OPERATOR),
-            User(name="Viewer", email="viewer@leitossync.com", role=UserRole.VIEWER),
+            User(name="Administrador", email="admin@leitossync.com", role=UserRole.ADMIN),
+            User(name="Regulador", email="reg@leitossync.com", role=UserRole.REGULATOR),
+            User(name="Operador", email="op@leitossync.com", role=UserRole.HOSPITAL_OPERATOR),
+            User(name="Visualizador", email="viewer@leitossync.com", role=UserRole.VIEWER),
         ]
         session.add_all(users)
 

@@ -38,17 +38,17 @@ const Dashboard = () => {
     }
   }, [messages]);
 
-  if (!summary) return <div className="p-4">Loading...</div>;
+  if (!summary) return <div className="p-4">Carregando...</div>;
 
   const stats = [
-    { label: 'Total Hospitals', value: summary.total_hospitals, color: 'bg-blue-100 text-blue-800' },
-    { label: 'Total Resources', value: summary.total_resources, color: 'bg-indigo-100 text-indigo-800' },
-    { label: 'Available', value: summary.available, color: 'bg-green-100 text-green-800' },
-    { label: 'Reserved', value: summary.reserved, color: 'bg-yellow-100 text-yellow-800' },
-    { label: 'Occupied', value: summary.occupied, color: 'bg-red-100 text-red-800' },
-    { label: 'Blocked', value: summary.blocked, color: 'bg-gray-200 text-gray-800' },
-    { label: 'Maintenance', value: summary.maintenance, color: 'bg-orange-100 text-orange-800' },
-    { label: 'Occupancy Rate', value: `${summary.occupancy_rate.toFixed(1)}%`, color: 'bg-purple-100 text-purple-800' },
+    { label: 'Total de Hospitais', value: summary.total_hospitals, color: 'bg-blue-100 text-blue-800' },
+    { label: 'Total de Recursos', value: summary.total_resources, color: 'bg-indigo-100 text-indigo-800' },
+    { label: 'Disponível', value: summary.available, color: 'bg-green-100 text-green-800' },
+    { label: 'Reservado', value: summary.reserved, color: 'bg-yellow-100 text-yellow-800' },
+    { label: 'Ocupado', value: summary.occupied, color: 'bg-red-100 text-red-800' },
+    { label: 'Bloqueado', value: summary.blocked, color: 'bg-gray-200 text-gray-800' },
+    { label: 'Manutenção', value: summary.maintenance, color: 'bg-orange-100 text-orange-800' },
+    { label: 'Taxa de Ocupação', value: `${summary.occupancy_rate.toFixed(1)}%`, color: 'bg-purple-100 text-purple-800' },
   ];
 
   return (

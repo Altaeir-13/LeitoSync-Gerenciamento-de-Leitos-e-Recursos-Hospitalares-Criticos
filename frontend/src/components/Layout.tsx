@@ -6,11 +6,11 @@ const Layout = () => {
   const location = useLocation();
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Hospitals', path: '/hospitals', icon: Building2 },
-    { name: 'Resources', path: '/resources', icon: BedDouble },
-    { name: 'Simulator', path: '/simulator', icon: Activity },
-    { name: 'Audit Logs', path: '/audit-logs', icon: ShieldAlert },
+    { name: 'Painel', path: '/', icon: LayoutDashboard },
+    { name: 'Hospitais', path: '/hospitals', icon: Building2 },
+    { name: 'Recursos', path: '/resources', icon: BedDouble },
+    { name: 'Simulador', path: '/simulator', icon: Activity },
+    { name: 'Auditoria', path: '/audit-logs', icon: ShieldAlert },
   ];
 
   return (
