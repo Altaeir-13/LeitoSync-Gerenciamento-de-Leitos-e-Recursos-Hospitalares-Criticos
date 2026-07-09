@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 
 interface Hospital {
   id: number;
@@ -15,7 +15,7 @@ const Hospitals = () => {
   useEffect(() => {
     const fetchHospitals = async () => {
       try {
-        const { data } = await api.get('/hospitals');
+        const data = await rpcCall<Hospital[]>('hospitais.listar');
         setHospitals(data);
       } catch (e) {
         console.error(e);

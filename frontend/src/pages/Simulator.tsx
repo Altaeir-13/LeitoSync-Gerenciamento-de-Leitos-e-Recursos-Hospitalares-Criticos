@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 import { Activity, BookOpen, PenTool, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { STATUS_MAP } from '../utils/translations';
 
@@ -13,7 +13,7 @@ const Simulator = () => {
 
   useEffect(() => {
     const fetchResources = async () => {
-      const { data } = await api.get('/resources');
+      const data = await rpcCall<any[]>('recursos.listar');
       setResources(data);
       if (data.length > 0) setSelectedResource(data[0].id.toString());
     };
@@ -25,12 +25,10 @@ const Simulator = () => {
     setLoading(true);
     setResults(null);
     try {
-      const { data } = await api.post(`/simulation/readers-writers`, null, {
-        params: {
-          resource_id: selectedResource,
-          readers_count: readersCount,
-          writers_count: writersCount,
-        }
+      const data = await rpcCall<any>('simulacao.leitores_escritores', {
+        resource_id: Number(selectedResource),
+        readers_count: readersCount,
+        writers_count: writersCount,
       });
       setResults(data);
     } catch (e) {

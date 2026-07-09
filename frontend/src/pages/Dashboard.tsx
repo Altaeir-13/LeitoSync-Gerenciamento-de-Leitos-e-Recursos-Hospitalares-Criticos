@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 interface Summary {
@@ -21,7 +21,7 @@ const Dashboard = () => {
 
   const fetchSummary = async () => {
     try {
-      const { data } = await api.get('/dashboard/summary');
+      const data = await rpcCall<Summary>('dashboard.resumo');
       setSummary(data);
     } catch (e) {
       console.error(e);

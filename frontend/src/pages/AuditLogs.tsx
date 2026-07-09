@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 import { STATUS_MAP, ACTION_MAP } from '../utils/translations';
 
 const AuditLogs = () => {
@@ -8,7 +8,7 @@ const AuditLogs = () => {
   useEffect(() => {
     const fetchLogs = async () => {
       try {
-        const { data } = await api.get('/audit-logs');
+        const data = await rpcCall<any[]>('auditoria.listar');
         setLogs(data);
       } catch (e) {
         console.error(e);

@@ -1,4 +1,4 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes import resources, simulation, hospitals, resource_types, dashboard, audit_logs
 from app.routes.ws import manager
@@ -27,9 +27,12 @@ async def websocket_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
-app.include_router(resources.router)
-app.include_router(simulation.router)
-app.include_router(hospitals.router)
-app.include_router(resource_types.router)
-app.include_router(dashboard.router)
-app.include_router(audit_logs.router)
+from app.database import get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Request
+from app.rpc.dispatcher import dispatch_rpc
+
+@app.post("/rpc")
+async def rpc_endpoint(request: Request, db: AsyncSession = Depends(get_db)):
+    payload = await request.json()
+    return await dispatch_rpc(payload, db)

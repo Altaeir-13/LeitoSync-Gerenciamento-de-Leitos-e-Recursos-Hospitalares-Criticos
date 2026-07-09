@@ -41,6 +41,66 @@ leitossync/
   .gitignore
 ```
 
+## Arquitetura RPC
+
+O projeto utiliza **JSON-RPC 2.0** como protocolo principal para IPC (Inter-Process Communication) entre o frontend e o backend. 
+
+* O endpoint principal e único para transações é `POST /rpc`.
+* Clientes (Frontend) chamam métodos remotos através do cliente em TypeScript construído.
+* O Backend atua como Servidor RPC despachando as chamadas e processando-as atomicamente.
+
+### Exemplo de Chamada RPC (Request)
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "recursos.reservar",
+  "params": {
+    "resource_id": 1,
+    "requester_name": "Central 1",
+    "priority": "emergency"
+  },
+  "id": 1
+}
+```
+
+### Exemplo de Resposta RPC (Success/Error)
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "success": true,
+    "message": "Recurso reservado com sucesso.",
+    "resource": { ... }
+  },
+  "id": 1
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": 409,
+    "message": "O recurso não está mais disponível para reserva."
+  },
+  "id": 1
+}
+```
+
+**Nota sobre WebSocket:** O WebSocket (`ws://localhost:8000/ws/resources`) foi mantido *exclusivamente* como um canal assíncrono de reatividade UI. A consistência real dos dados e a concorrência dependem **somente** das chamadas RPC conectadas ao lock pessimista no PostgreSQL.
+
+## Simulação simplificada em Python
+
+O arquivo `simulacao_leitossync.py` é uma versão didática do projeto maior. Ela usa XML-RPC da biblioteca padrão do Python para mostrar, em um único arquivo, como leitores e escritores podem chamar procedimentos remotos em um servidor que controla o estado compartilhado dos leitos.
+
+Comando:
+
+```bash
+python simulacao_leitossync.py
+```
+
+Essa simulação não substitui o sistema completo, mas ajuda a entender a lógica de concorrência com chamadas remotas de procedimento.
+
 ## Como executar com Docker Compose
 
 Para subir o ambiente completo (banco de dados, backend e frontend), execute:

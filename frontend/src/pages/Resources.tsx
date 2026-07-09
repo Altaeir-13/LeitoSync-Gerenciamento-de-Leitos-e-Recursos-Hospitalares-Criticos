@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { STATUS_MAP } from '../utils/translations';
 
@@ -27,7 +27,7 @@ const Resources = () => {
 
   const fetchResources = async () => {
     try {
-      const { data } = await api.get('/resources');
+      const data = await rpcCall<Resource[]>('recursos.listar');
       setResources(data);
     } catch (e) {
       console.error(e);

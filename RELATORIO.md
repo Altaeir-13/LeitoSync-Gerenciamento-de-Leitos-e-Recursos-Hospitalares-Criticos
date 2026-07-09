@@ -77,7 +77,64 @@ O LeitoSync adota uma arquitetura em camadas focada em desacoplamento e escalabi
 * **Banco de Dados (PostgreSQL):** Responsável primário pelo armazenamento persistente, integridade relacional, e mais importante: o controle transacional e bloqueio pessimista a nível de linha.
 * **Testes:** Validação profunda das garantias de concorrência e consistência simulando cenários idênticos à produção.
 
-## 5. Modelagem do domínio
+## 5. Uso de RPC no LeitoSync
+
+RPC significa Remote Procedure Call, ou chamada remota de procedimento. No LeitoSync, o cliente não chama diretamente funções locais do servidor. Em vez disso, ele envia uma mensagem JSON-RPC para o endpoint único `/rpc`, informando o nome do procedimento remoto no campo `method`. O servidor recebe essa chamada, identifica o método solicitado, executa a função correspondente e retorna o resultado no formato JSON-RPC.
+
+O uso de HTTP neste caso é apenas o transporte da mensagem (FastAPI atua como transporte HTTP para mensagens JSON-RPC). A arquitetura não deve ser descrita como REST para as operações principais, porque a operação não é determinada por múltiplas rotas como `GET /resources` ou `POST /resources/{id}/reserve`, mas sim pelo campo `method` dentro da requisição RPC.
+
+### Comparativo Arquitetural
+
+| Aspecto              | Versão REST anterior           | Versão RPC atual          |
+| -------------------- | ------------------------------ | ------------------------- |
+| Entrada principal    | Várias rotas HTTP              | Endpoint único `/rpc`     |
+| Listagem de recursos | `GET /resources`               | `recursos.listar`         |
+| Reserva de recurso   | `POST /resources/{id}/reserve` | `recursos.reservar`       |
+| Simulação            | Endpoints REST                 | Métodos `simulacao.*`     |
+| Comunicação          | Orientada a recursos           | Orientada a procedimentos |
+| Consistência         | PostgreSQL + lock              | PostgreSQL + lock         |
+
+### Exemplo de Chamada RPC (Request)
+```json
+{
+  "jsonrpc": "2.0",
+  "method": "recursos.reservar",
+  "params": {
+    "resource_id": 1,
+    "requester_name": "Central de Regulação",
+    "patient_code": "PAC-001",
+    "priority": "emergency",
+    "reason": "Paciente crítico"
+  },
+  "id": 2
+}
+```
+
+### Exemplo de Resposta RPC de Sucesso
+```json
+{
+  "jsonrpc": "2.0",
+  "result": {
+    "success": true,
+    "message": "Recurso reservado com sucesso."
+  },
+  "id": 2
+}
+```
+
+### Exemplo de Conflito (Erro)
+```json
+{
+  "jsonrpc": "2.0",
+  "error": {
+    "code": 409,
+    "message": "O recurso não está mais disponível para reserva."
+  },
+  "id": 2
+}
+```
+
+## 6. Modelagem do domínio
 
 O sistema foi modelado de forma enxuta para validar a premissa de distribuição. As principais entidades mapeadas nos arquivos (`backend/app/models/`) são:
 
@@ -97,43 +154,42 @@ Cada recurso (ex: o leito `UTI-A-102`) abriga duas colunas essenciais: `status` 
 * **blocked:** Interditado temporariamente (limpeza).
 * **maintenance:** Recurso indisponível por razões técnicas preventivas.
 
-## 6. Operações de leitura
+## 7. Operações de leitura (Leitores)
 
-Diversas operações do LeitoSync não exigem exclusão mútua e se comportam estritamente como **leitores** no modelo teórico. 
+Diversas operações do LeitoSync não exigem exclusão mútua e se comportam estritamente como **leitores** no modelo teórico. Múltiplos leitores podem consultar simultaneamente sem criar bloqueios (non-blocking).
 
-Endpoints como:
-* `GET /resources`
-* `GET /resources/{id}`
-* `GET /resources/availability`
-* `GET /hospitals`
-* `GET /resource-types`
-* `GET /dashboard/summary`
-* `GET /audit-logs`
+Os **leitores são métodos RPC de consulta**, como:
+* `recursos.listar`
+* `recursos.obter`
+* `dashboard.resumo`
+* `auditoria.listar`
 
-Essas rotas executam `select` diretos através do repositório, sem requerer cláusulas de lock na base. Eles representam o lado "Read-Heavy" de um sistema de regulação de leitos.
+Esses métodos executam consultas (select) diretas através do banco, sem requerer cláusulas de lock na base. Eles representam o lado "Read-Heavy" de um sistema de regulação de leitos.
 
-No LeitoSync, as consultas de disponibilidade representam os leitores perfeitamente: uma central de regulação e cinco hospitais podem consultar simultaneamente a disponibilidade de vagas sem causar nenhum gargalo de travamento uns nos outros, extraindo os metadados do estado de maneira livre (non-blocking).
+No LeitoSync, as consultas de disponibilidade representam os leitores perfeitamente: uma central de regulação e cinco hospitais podem consultar simultaneamente a disponibilidade de vagas sem causar nenhum gargalo de travamento uns nos outros. O recurso compartilhado, neste contexto, é o estado dos leitos e recursos hospitalares.
 
-## 7. Operações de escrita
+## 8. Operações de escrita (Escritores)
 
-As requisições que promovem a mudança de estado num leito ou respirador são os **escritores**.
+As requisições que promovem a mudança de estado num leito ou respirador são os **escritores**. Eles precisam de exclusividade na alteração do recurso.
 
-Endpoints como:
-* `POST /resources/{resource_id}/reserve`
-* `POST /resources/{resource_id}/release`
-* `POST /resources/{resource_id}/occupy`
-* `POST /resources/{resource_id}/block`
-* `POST /resources/{resource_id}/maintenance`
+Os **escritores são métodos RPC de alteração**, como:
+* `recursos.reservar`
+* `recursos.liberar`
+* `recursos.ocupar`
+* `recursos.bloquear`
+* `recursos.manutencao`
 
-Essas operações manipulam o estado e incrementam a versão do recurso, necessitando de uma coordenação drástica (bloqueio). Sem sincronização, a consistência do modelo quebra. Exemplos práticos dessa inconsistência (condições de corrida) caso a exclusão mútua não fosse resolvida:
+Essas operações manipulam o estado (recurso compartilhado) e incrementam a versão do recurso, necessitando de uma coordenação drástica (bloqueio pessimista por linha). Sem controle de concorrência, duas centrais poderiam reservar o mesmo leito.
 
-* Duas centrais, ao enxergarem o leito `UTI-01` como "available" na tela, clicam em "Reservar" ao mesmo tempo. Ambas requisições são processadas paralelamente na camada de aplicação e despacham dois `UPDATE` confirmando a reserva. Resultado: A falha mais temida — duas ambulâncias enviadas para um mesmo leito.
+Exemplos práticos dessa inconsistência caso a exclusão mútua não fosse resolvida:
+* Duas centrais, ao enxergarem o leito `UTI-01` como "available" na tela, tentam "Reservar" ao mesmo tempo via RPC. Ambas requisições são processadas paralelamente na camada de aplicação e despacham dois `UPDATE` confirmando a reserva. Resultado: A falha mais temida — duas ambulâncias enviadas para um mesmo leito.
 * Um recurso sendo liberado por um profissional ao mesmo tempo em que outro decide ocupá-lo emergencialmente, sobrescrevendo um estado por outro baseado em leitura desatualizada.
-* Histórico de auditoria incompleto ou inconsistente devido a salvamentos concorrentes na tabela base (dirty reads).
 
-## 8. Como o código soluciona o problema
+Com transação e bloqueio pessimista, apenas uma escrita concorrente é confirmada.
 
-Para resolver essa condição de corrida clássica em ambientes distribuídos, o sistema descentraliza a contenção que estaria apenas na memória (FastAPI) e a delega ao Banco de Dados (PostgreSQL).
+## 9. Como o código soluciona o problema
+
+Para resolver essa condição de corrida clássica em ambientes distribuídos, a lógica de concorrência continua sendo garantida pelo PostgreSQL, usando transações e bloqueio pessimista por linha.
 
 A solução reside, por excelência, no arquivo `backend/app/repositories/resource_repo.py`, na camada mais íntima do acesso ao dado.
 
@@ -147,8 +203,8 @@ A solução reside, por excelência, no arquivo `backend/app/repositories/resour
 7. Uma entidade de `Reservation` ativa é criada na mesma sessão.
 8. Uma entidade de `AuditLog` é criada na mesma sessão, rastreando a mudança (old -> new).
 9. Ocorre o `commit()` das alterações, encerrando o tempo de vida da exclusão mútua na região crítica e persistindo fisicamente os 3 comportamentos acima num único movimento (All or Nothing).
-10. O FastAPI emite no WebSocket `/ws/resources` o broadcast confirmando a mudança a todos os visualizadores.
-11. Se um **segundo escritor** estivesse aguardando o lock da mesma linha neste milissegundo e tentasse reservar ao receber o lock, ele encontraria o status como `reserved` no passo 4. Imediatamente a transação dele sofre `rollback()` no banco e o backend o avisa retornando amigavelmente `HTTP 409 Conflict`.
+10. O FastAPI emite no WebSocket `/ws/resources` uma notificação visual confirmando a mudança a todos os navegadores. O WebSocket serve apenas como mecanismo de notificação/atualização da interface, não como mecanismo de consistência.
+11. Se um **segundo escritor** estivesse aguardando o lock da mesma linha neste milissegundo e tentasse reservar ao receber o lock, ele encontraria o status como `reserved` no passo 4. Imediatamente a transação dele sofre `rollback()` no banco e o backend o avisa retornando amigavelmente o erro de RPC (código 409).
 
 **Pseudocódigo do Fluxo de Banco:**
 ```sql
@@ -229,7 +285,7 @@ Uma suíte rigorosa de baterias end-to-end e integração assíncrona foi redigi
 7. `test_reservation_creates_single_active_reservation`: Bate diretamente de maneira violenta sobre a integridade do ORM e Banco. Dispara o enxame de 5 escritores e consome o comando direto (`func.count()`) na base do PostgreSQL para aferir, cabalmente, se somente 1 linha ativa de Reservação fora gerada para as 5 requisições, extirpando hipóteses de ghost-bookings.
 8. `test_write_creates_audit_log`: Garante que, independente do que suceda na arquitetura, toda solicitação bem sucedida deve carregar a tiracolo a atomicidade da trilha de segurança do LeitoSync, aferindo status antigos (old) e novos (new).
 
-*(Os testes foram validados e rodaram no container backend apontando `8 passed` e zero falhas de vazamento).*
+*(Os testes foram validados e rodaram no container backend. Evidência esperada dos testes: `8 passed, 1 warning`. O warning do Pydantic sobre `config` deprecado não impede a execução e não afeta a corretude da solução).*
 
 ## 14. Execução do projeto
 

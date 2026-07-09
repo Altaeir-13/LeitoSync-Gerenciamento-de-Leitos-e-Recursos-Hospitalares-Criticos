@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { rpcCall } from '../services/rpcClient';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { STATUS_MAP, ACTION_MAP } from '../utils/translations';
 
@@ -23,7 +23,7 @@ const ResourceDetail = () => {
 
   const fetchResource = async () => {
     try {
-      const { data } = await api.get(`/resources/${id}`);
+      const data = await rpcCall<any>('recursos.obter', { resource_id: Number(id) });
       setResource(data);
     } catch (e) {
       console.error(e);
@@ -49,13 +49,15 @@ const ResourceDetail = () => {
     setActionSuccess('');
     try {
       if (action === 'reserve') {
-        await api.post(`/resources/${id}/reserve`, {
+        await rpcCall('recursos.reservar', {
+          resource_id: Number(id),
           requester_name: 'Operador',
           priority: 'medium',
           reason: 'Reserva manual'
         });
       } else {
-        await api.post(`/resources/${id}/${action}`, {
+        await rpcCall(`recursos.${action}`, {
+          resource_id: Number(id),
           actor_name: 'Operador',
           reason: `Ação manual: ${action}`
         });
